@@ -1,0 +1,642 @@
+---
+title: "Negative Ties"
+subtitle: "The occurrence and mechanisms of positive and negative ties in the  social networks"
+author: "Mohamed Shehata"
+date: "02/04/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+
+library(knitr)
+library(sna)
+
+#Prepare the data
+#first upload the data as we can only use two networks for time 1 and time 4 as both have the behavior and attitude for all nodes in the network 
+
+load("Final project Dataset.RData")
+
+#Delete the whole nodes that actor non-response coded with = 9, as some students dropout in network 4 and network 5 
+
+present4 <- rowSums(t4.dat) != (nrow(t4.dat) * 9)
+
+t4.data  <- t4.dat[present4 ,present4 ] 
+
+present1 <- rowSums(t1.dat) != (nrow(t1.dat) * 9)
+
+t1.data  <- t1.dat[present1 ,present1 ] 
+
+present5 <- rowSums(t5.dat) != (nrow(t5.dat) * 9)
+
+t5.data  <- t5.dat[present5 ,present5 ] 
+
+#create out matrixes and recoded it again as we will have a positive and negative binary networks for both the 4th and the 5th network
+
+#the positive networks will be coded with 1= for friends and best friends and friendly relation (1 &2 &3) and otherwise 0 
+
+#network 4 
+Positive_data4 <- ifelse(t4.data == 1, yes = 1, 
+                         ifelse(t4.data == 2, yes = 1,
+                         ifelse(t4.data == 3, yes = 1,
+                                no = 0)))
+
+#network 5
+
+Positive_data5 <- ifelse(t5.data == 1, yes = 1, 
+                         ifelse(t5.data == 2, yes = 1,
+                         ifelse(t5.data == 3, yes = 1,
+                                no = 0)))
+
+#then, we will also recode for the negative networks as will be coded with 1 for troubled relation = 5 and otherwise 0 
+
+negative_data4 <- ifelse(t4.data == 5, 1, 0)
+
+#network 5
+
+
+negative_data5 <- ifelse(t5.data == 5, 1, 0)
+
+
+#Create two networks from these data frames that we are interested in 
+
+network1 <- as.network(t1.data)
+
+network4 <- as.network(t4.data)
+
+network5 <- as.network(t5.data)
+
+network4_positive <- as.network(Positive_data4)
+
+network4_negative <- as.network(negative_data4)
+  
+network5_positive <- as.network(Positive_data5)
+
+network5_negative <- as.network(negative_data5)
+
+
+#create our attribute variables from cov1.dat to avector to be used later with #networks if needed:
+
+gender1 <- cov1.dat[,2]
+
+program1 <- cov1.dat[,3]
+
+smoking1 <- cov1.dat[,4]
+
+drugs1 <- cov1.dat[,5]
+
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+
+#descriptive analysis about the network 4&5 before splitting it into positive and negative networks
+
+#network 4
+
+#indegree mean & SD
+
+network4_indeg_mean <- round(mean(degree(t4.data,cmode = "indegree")), digits=2)
+
+network4_indeg_SD <- round(sd(degree(t4.data,cmode = "indegree")), digits=2)
+
+#Outdegree mean & SD
+
+network4_outdeg_mean <- round(mean(degree(t4.data,cmode = "outdegree")), digits=2)
+
+network4_outdeg_SD <- round(sd(degree(t4.data,cmode = "outdegree")), digits=2)
+
+#Tranasitivity
+
+network4_post4  <- round(gtrans(t4.data, measure = "weak"),digits = 2)
+
+#reciprocity
+
+network4_recip <- round(grecip(network4,measure="edgewise"),digits = 2)
+
+#density
+density_network4 <- round(network.density(network4, na.omit=TRUE, discount.bipartite=FALSE),digits=2)
+
+########################
+
+#network 5
+
+#indegree mean & SD
+
+network5_indeg_mean <- round(mean(degree(t5.data,cmode = "indegree")), digits=2)
+
+network5_indeg_SD <- round(sd(degree(t5.data,cmode = "indegree")), digits=2)
+
+#Outdegree mean & SD
+
+network5_outdeg_mean <- round(mean(degree(t5.data,cmode = "outdegree")), digits=2)
+
+network5_outdeg_SD <- round(sd(degree(t5.data,cmode = "outdegree")), digits=2)
+
+#Tranasitivity
+
+network5_post4  <- round(gtrans(t5.data, measure = "weak"),digits = 2)
+
+#reciprocity
+
+network5_recip <- round(grecip(network5,measure="edgewise"),digits = 2)
+
+#density
+density_network5 <- round(network.density(network5, na.omit=TRUE, discount.bipartite=FALSE),digits=2)
+
+
+#################
+
+#put them all in a data frame
+
+#network 4 
+
+net44_df <- t(data.frame(
+  Indegree_mean = network4_indeg_mean,
+  Outdegree_mean = network4_outdeg_mean,
+  Indegree_SD = network4_indeg_SD,
+  Outdegree_SD = network4_outdeg_SD,
+  Transitivity = network4_post4,
+  Reciprocity = network4_recip,
+  Density = density_network4 ))
+
+#network 5 
+
+net55_df <- t(data.frame(
+  Indegree_mean = network5_indeg_mean,
+  Outdegree_mean = network5_outdeg_mean,
+  Indegree_SD = network5_indeg_SD,
+  Outdegree_SD = network5_outdeg_SD,
+  Transitivity = network5_post4,
+  Reciprocity = network5_recip,
+  Density = density_network5 ))
+
+#merge them all
+
+
+Merged4455_df <- cbind(net44_df,net55_df)
+
+```
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+
+#ploting the networks development
+
+par(mfrow=c(1,3))
+
+plot(network1,xlab="Network 1")
+plot(network4,xlab="Network 4")
+plot(network5,xlab="Network 5")
+
+mtext("Networks Development Over Time ", outer=TRUE,  cex=2, line=-3)
+
+```
+
+
+```{r, results='asis',message=FALSE,echo=FALSE,warning=FALSE}
+
+#add them in kable
+
+library(knitr)
+
+kable(Merged4455_df ,
+      col.names = c(" Network 4"," Network 5"),
+      caption = "Descriptive network statistics for networks 4 and 5")
+      
+
+```
+
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+#descriptive analysis for positive and negative networks 4 and 5 
+
+############
+#Positive network 4 
+
+#indegree mean & SD
+
+post4_indeg_mean <- round(mean(degree(Positive_data4,cmode = "indegree")), digits=2)
+
+post4_indeg_SD <- round(sd(degree(Positive_data4,cmode = "indegree")), digits=2)
+
+#Outdegree mean & SD
+
+post4_outdeg_mean <- round(mean(degree(Positive_data4,cmode = "outdegree")), digits=2)
+
+post4_outdeg_SD <- round(sd(degree(Positive_data4,cmode = "outdegree")), digits=2)
+
+#Tranasitivity
+
+trans_post4  <- round(gtrans(Positive_data4, measure = "weak"),digits = 2)
+
+#reciprocity
+
+post4_recip <- round(grecip(network4_positive,measure="edgewise"),digits = 2)
+
+#density
+density_post4 <- round(network.density(network4_positive, na.omit=TRUE, discount.bipartite=FALSE),digits=2) 
+
+############
+
+#negative network 4 
+
+#indegree mean & SD
+
+negat4_indeg_mean <- round(mean(degree(negative_data4,cmode = "indegree")), digits=2)
+
+negat4_indeg_SD <- round(sd(degree(negative_data4,cmode = "indegree")), digits=2)
+
+#Outdegree mean & SD
+
+negat4_outdeg_mean <- round(mean(degree(negative_data4,cmode = "outdegree")), digits=2)
+
+negat4_outdeg_SD <- round(sd(degree(negative_data4,cmode = "outdegree")), digits=2)
+
+#Tranasitivity
+
+trans_negat4  <- round(gtrans(negative_data4, measure = "weak"),digits = 2)
+
+#reciprocity
+
+negat4_recip <- round(grecip(network4_negative,measure="edgewise"),digits = 2)
+
+#density
+
+density_negat4 <- round(network.density(network4_negative, na.omit=TRUE, discount.bipartite=FALSE),digits=2) 
+
+#all in df
+network4_df <- t(data.frame(
+  Indegree_mean = c(post4_indeg_mean,negat4_indeg_mean),
+  Outdegree_mean = c(post4_outdeg_mean,negat4_outdeg_mean),
+  Indegree_SD = c(post4_indeg_SD,negat4_indeg_SD),
+  Outdegree_SD = c(post4_outdeg_SD,negat4_outdeg_SD),
+  Transitivity = c(trans_post4,trans_negat4),
+  Reciprocity = c(post4_recip,negat4_recip),
+  Density = c(density_post4,density_negat4)))
+
+
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+
+#Positive network 5 
+
+#indegree mean & SD
+
+post5_indeg_mean <- round(mean(degree(Positive_data5,cmode = "indegree")), digits=2)
+
+post5_indeg_SD <- round(sd(degree(Positive_data5,cmode = "indegree")), digits=2)
+
+#Outdegree mean & SD
+
+post5_outdeg_mean <- round(mean(degree(Positive_data5,cmode = "outdegree")), digits=2)
+
+post5_outdeg_SD <- round(sd(degree(Positive_data5,cmode = "outdegree")), digits=2)
+
+#Tranasitivity
+
+trans_post5  <- round(gtrans(Positive_data5, measure = "weak"),digits = 2)
+
+#reciprocity
+
+post5_recip <- round(grecip(network5_positive,measure="edgewise"),digits = 2)
+
+#density
+density_post5 <- round(network.density(network5_positive, na.omit=TRUE, discount.bipartite=FALSE),digits=2) 
+
+############
+
+#negative network 5 
+
+#indegree mean & SD
+
+negat5_indeg_mean <- round(mean(degree(negative_data5,cmode = "indegree")), digits=2)
+
+negat5_indeg_SD <- round(sd(degree(negative_data5,cmode = "indegree")), digits=2)
+
+#Outdegree mean & SD
+
+negat5_outdeg_mean <- round(mean(degree(negative_data5,cmode = "outdegree")), digits=2)
+
+negat5_outdeg_SD <- round(sd(degree(negative_data5,cmode = "outdegree")), digits=2)
+
+#Tranasitivity
+
+trans_negat5  <- round(gtrans(negative_data5, measure = "weak"),digits = 2)
+
+#reciprocity
+
+negat5_recip <- round(grecip(network5_negative,measure="edgewise"),digits = 2)
+
+#density
+
+density_negat5 <- round(network.density(network5_negative, na.omit=TRUE, discount.bipartite=FALSE),digits=2) 
+
+#all in df
+network5_df <- t(data.frame(
+  Indegree_mean = c(post5_indeg_mean,negat5_indeg_mean),
+  Outdegree_mean = c(post5_outdeg_mean,negat5_outdeg_mean),
+  Indegree_SD = c(post5_indeg_SD,negat5_indeg_SD),
+  Outdegree_SD = c(post5_outdeg_SD,negat5_outdeg_SD),
+  Transitivity = c(trans_post5,trans_negat5),
+  Reciprocity = c(post5_recip,negat5_recip),
+  Density = c(density_post5,density_negat5)))
+############
+
+#all df merged 
+
+Merged_df <- cbind(network4_df,network5_df)
+
+```
+
+
+```{r, results='asis',message=FALSE,echo=FALSE,warning=FALSE}
+
+#add them in kable
+
+library(knitr)
+
+kable(Merged_df,
+      col.names = c("Positive Network 4","Negative Network 4","Positive Network 5","Negative Network 5"),
+      caption = "Descriptive network statistics for students data set Marijtje van Duijn")
+
+
+```
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+
+#plot positive and negative network 4 
+
+par(mfrow=c(1,2))
+
+plot(network4_positive,xlab=" Positive Ties")
+plot(network4_negative,xlab=" Negative Ties")
+
+mtext("Network 4 ", outer=TRUE,  cex=2, line=-3)
+#plot positive and negative network 5
+
+par(mfrow=c(1,2))
+
+plot(network5_positive,xlab=" Positive Ties")
+plot(network5_negative,xlab="Negative Ties")
+
+mtext("Network 5 ", outer=TRUE,  cex=2, line=-3)
+
+```
+
+
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+
+#ERGM models for the fifth positive network   
+
+library(latticeExtra)	
+library(ergm)
+library(network)
+
+#prepare the network and Program similarties 
+
+Positive_Network <- network5_positive
+
+#nodes only exist in the network 5 with the program variable 
+
+Program <- program1[c(1,2,4,9,10,11,15,16,17,18,21,28,29,30,31,33,36,38)]
+
+#prepare the gender 
+
+Positive_Network %v% "Program" <- Program
+
+#then create the first model 
+
+model1 <- Positive_Network~
+	edges+	# overall tendency to create ties
+	mutual+		# reciprocation
+	gwesp(0.5,fixed=TRUE)	+# transitive closure
+   nodematch('Program',diff=F) #how Program matching affect the network formation? 
+
+results1 <- ergm(model1)
+
+summary(results1)
+
+
+```
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+#negative network ERGM 
+
+Negative_network <- network5_negative
+
+Smoke <- smoking1[c(1,2,4,9,10,11,15,16,17,18,21,28,29,30,31,33,36,38)]
+
+Drugs <- drugs1[c(1,2,4,9,10,11,15,16,17,18,21,28,29,30,31,33,36,38)]
+
+Negative_network  %v% "Smoke" <- Smoke
+Negative_network  %v% "Drugs" <- Drugs
+
+model2 <- Negative_network~
+	edges+	# overall tendency to create ties
+	mutual+		# reciprocation
+	twopath+	# precondition for transitive closure
+	gwesp(0.5,fixed=TRUE)+	# transitive closure
+   absdiff("Smoke") + #how smoke affect the network? 
+  absdiff("Drugs") #how Drugs affect the network? 
+
+results2 <- ergm(model2)
+
+summary(results2)
+
+
+
+
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='asis'}
+
+library(stargazer)
+
+stargazer(results1,results2, header = FALSE, title = "Two ERGM Models for Positive and Negative Networks ", notes = "Data taken from data set Marijtje van Duijn.")
+
+```
+
+
+
+
+
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,results='hide'}
+#simulation
+
+#for positive
+
+Sim_positive <- simulate(results1,nsim=100)
+
+#for negative 
+
+Sim_negative <- simulate(results2,nsim=100)
+
+```
+
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+#then, calculate density for positive simulated networks 
+
+par(mfrow=c(1,2))
+hist(gden(Sim_positive), xlab = "The Positive Model's Density", main = "")
+
+# Add vertical line where empirical data are:
+lines(rep(gden(Positive_Network),2),c(0,30),col="red",lwd=5)
+
+#then, calculate density for negative simulated networks 
+
+hist(gden(Sim_negative), xlab = "The Negative Model's Density",main = "")
+
+# Add vertical line where empirical data are:
+lines(rep(gden(Negative_network),2),c(0,30),col="red",lwd=5)
+
+mtext("Density Of Simulated Networks From Both Models", outer=TRUE,  cex=1, line=-1.5)
+
+
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+#then, calculate reciprocity for the positive simulated networks
+
+par(mfrow=c(1,2) )
+
+hist(grecip(Sim_positive, measure = "edgewise"), xlab = "The Positive Model's Reciprocity", 
+     main = "")
+
+# Add vertical line where empirical data are:
+lines(rep(grecip(Positive_Network, measure = "edgewise"),2),c(0,30),col="red",lwd=5)
+
+#then, calculate reciprocity for the negative simulated networks
+
+hist(grecip(Sim_negative, measure = "edgewise"),  xlim = c(-0.2,0.2), xlab = "The Negative Model's Reciprocity", main = "")
+
+# Add vertical line where empirical data are:
+lines(rep(grecip(Negative_network, measure = "edgewise"),2),c(0,30),col="red",lwd=5)
+
+mtext("Reciprocity Of Simulated Networks From Both Models", outer=TRUE,  cex=1, line=-1.5)
+
+
+```
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+
+#then, calculate transitivity for the positive simulated networks
+
+ Sim1.transitivities <- sapply(Sim_positive,function(er){
+	sna::gtrans((er))
+})
+
+par(mfrow=c(1,2))
+
+hist(Sim1.transitivities, xlab = "The Positive Model's Transitivity",xlim = c(0.3,0.9), main = "")
+
+# Add vertical line where empirical data are:
+lines(rep(gtrans(Positive_Network, measure = "weak"),2),c(0,40),col="red",lwd=5)
+
+#then, calculate transitivity for the negative simulated networks
+
+Sim2.transitivities <- sapply(Sim_negative,function(er){
+	sna::gtrans((er))
+})
+
+hist(Sim2.transitivities, xlim = c(-0.3,0.3), xlab = "The Negative Model's Transitivity", main = "")
+
+# Add vertical line where empirical data are:
+lines(rep(gtrans(Negative_network, measure = "weak"),2),c(0,100),col="red",lwd=5)
+
+
+mtext("Transitivity Of Simulated Networks From Both Models", outer=TRUE,  cex=1, line=-1.5)
+
+```
+
+
+6.   Conclusions and discussion: 
+
+Ultimately, the descriptive results and the ERG models show that the positive ties have a high tendency for density, reciprocity, and transitivity, as these ties associated with homophily such as program study, reflecting that the social networks always seek the positive actors with similar attributes or values to communicate with (Hypothesis  One). Moreover, the negative ties show a weak density, transitivity, and zero reciprocity that shows how the actors avoid reciprocating and sending edges in the negative network because of a lack of cognition in many networks (Hypothesis  Two). Nonetheless, for future research, we can investigate how the negative ties developed from a positive to a negative tie and what attributes we can consider the effect this change, as it seems important to investigate the positive and negative ties under many conditions. 
+
+
+
+
+
+
+
+*References: 
+
+Harrigan, N. and Yap, J., 2017. Avoidance in negative ties: Inhibiting closure, reciprocity, and homophily. Social Networks, 48, pp.126-141. 
+
+Huitsing, G., Van Duijn, M.A., Snijders, T.A., Wang, P., Sainio, M., Salmivalli, C. and Veenstra, R., 2012. Univariate and multivariate models of positive and negative networks: Liking, disliking, and bully–victim relationships. Social Networks, 34(4), pp.645-657.
+
+Heider, F., 1946. Attitudes and cognitive organization. The Journal of psychology, 21(1), pp.107-112.
+ 
+Lim, Y. and Rubineau, B., 2013. Social status and negative tie formation. In Academy of Management Proceedings (Vol. 2013, No. 1, p. 14355). Briarcliff Manor, NY 10510: Academy of Management.
+
+Labianca, G. and Brass, D.J., 2006. Exploring the social ledger: Negative relationships and negative asymmetry in social networks in organizations. Academy of Management Review, 31(3), pp.596-614.
+
+Lusher, D., Koskinen, J., & Robins, G. (Eds.). (2013). Exponential random graph models for social networks: Theory, methods, and applications. Cambridge University Press. Chapter 3 &5 
+
+Newcomb, T.M., 1961. The acquaintance process as a prototype of human interaction.
+
+Papachristos, A.V., Hureau, D.M. and Braga, A.A., 2013. The corner and the crew: The influence of geography and social networks on gang violence. American sociological review, 78(3), pp.417-447.
+
+Veenstra, R., Steglich, C.E.G., 2012. Actor-based model for network and behavior dynamics: a tool to examine selection and influence processes. In: Laursen, B., Little, T.D., Card, N.A. (Eds.), Handbook of Developmental Research Methods. Guilford, New York, pp. 598–618.
+
+
+Van de Bunt, G.G., M.A.J. van Duijn, and T.A.B. Snijders. 1999. Friendship networks through time: An actor-oriented statistical network model. Computational and Mathematical Organization Theory, 5, 167-192.
+
+Van Duijn, Marijtje A.J., Zeggelink, Evelien P.H., Huisman, Mark, Stokman, Frans N., and Wasseur, Frans W. 2003. Evolution of sociology freshmen into a friendship network.
+Journal of Mathematical Sociology 27, 153-191.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
